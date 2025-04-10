@@ -24,8 +24,11 @@ COPY . .
 # Build the React application first
 RUN npm run build
 
-# Ensure server files are compiled to JavaScript
-RUN npx tsc --outDir dist/server src/server/index.ts
+# Create a minimal tsconfig for the server
+RUN echo '{"compilerOptions":{"esModuleInterop":true,"module":"CommonJS","target":"ES2020","outDir":"dist/server"},"include":["src/server/**/*"]}' > server-tsconfig.json
+
+# Compile the server TypeScript files
+RUN npx tsc -p server-tsconfig.json
 
 # Verify the server file exists
 RUN ls -la dist/server && cat dist/server/index.js

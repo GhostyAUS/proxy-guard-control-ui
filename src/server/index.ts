@@ -1,9 +1,8 @@
-
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { exec } from 'child_process';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { promisify } from 'util';
 import Docker from 'dockerode';
 
