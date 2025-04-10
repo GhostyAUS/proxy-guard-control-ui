@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { DockerService } from '@/services/DockerService';
 import { FilePermissionService } from '@/services/FilePermissionService';
 import { toast } from '@/components/ui/use-toast';
+import { AlertVariants } from '@/components/ui/alert';
 
 interface ConfigContextType {
   nginxConfigPath: string;
@@ -81,7 +82,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast({
           title: "Container Not Running",
           description: `The container "${nginxContainerName}" exists but is not running.`,
-          variant: "warning", // Now included in AlertVariants
+          variant: "warning" as AlertVariants,
         });
       }
     };
