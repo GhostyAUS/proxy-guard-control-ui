@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { DockerService } from '@/services/DockerService';
 import { FilePermissionService } from '@/services/FilePermissionService';
@@ -55,7 +54,6 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     details: '',
   });
   
-  // Check container status on load and when container name changes
   useEffect(() => {
     const checkContainer = async () => {
       const result = await DockerService.checkContainerStatus(nginxContainerName);
@@ -82,7 +80,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast({
           title: "Container Not Running",
           description: `The container "${nginxContainerName}" exists but is not running.`,
-          variant: "warning" as AlertVariants,
+          variant: "warning",
         });
       }
     };
@@ -90,7 +88,6 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     checkContainer();
   }, [nginxContainerName]);
   
-  // Check file permissions on load and when path changes
   useEffect(() => {
     checkFilePermissions();
   }, [nginxConfigPath]);
@@ -162,9 +159,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return false;
     }
     
-    // Check if permissions are correct for nginx to read (644 or 664)
     const permOk = result.permissions === '644' || result.permissions === '664';
-    // Check if owner is correct (nginx or root)
     const ownerOk = result.owner === 'nginx' || result.owner === 'root';
     
     setPermissionStatus({

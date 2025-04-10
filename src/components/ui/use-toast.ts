@@ -3,15 +3,18 @@ import type {
   ToastActionElement,
   ToastProps,
 } from "@/components/ui/toast";
+import { AlertVariants } from "@/components/ui/alert";
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
 
+// Extend the ToasterToast type to include the variant type from AlertVariants
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  variant?: AlertVariants;
 };
 
 const actionTypes = {
