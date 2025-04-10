@@ -4,7 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 // Configuration for file operations
 const FILE_API_BASE = '/api/files';
 
-interface FilePermission {
+export interface FilePermission {
   path: string;
   permissions: string; // Unix-style permissions, e.g. "644"
   owner: string;
@@ -45,7 +45,7 @@ export const FilePermissionService = {
   /**
    * Fix file permissions to ensure the nginx container can read it
    */
-  async fixFilePermissions(filePath: string, permissions: string = "644", owner: string = "nginx", group: string = "nginx"): Promise<boolean | FileError> {
+  async fixFilePermissions(filePath: string, permissions: string = "644", owner: string = "nginx", group: string = "nginx"): Promise<{ success: boolean } | FileError> {
     try {
       const response = await fetch(`${FILE_API_BASE}/permissions`, {
         method: 'POST',
@@ -68,7 +68,7 @@ export const FilePermissionService = {
         };
       }
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("Fix permissions error:", error);
       return {
@@ -81,7 +81,7 @@ export const FilePermissionService = {
   /**
    * Write content to a file with proper permissions
    */
-  async writeFile(filePath: string, content: string): Promise<boolean | FileError> {
+  async writeFile(filePath: string, content: string): Promise<{ success: boolean } | FileError> {
     try {
       const response = await fetch(`${FILE_API_BASE}/write`, {
         method: 'POST',
@@ -104,11 +104,11 @@ export const FilePermissionService = {
       
       // Automatically fix permissions after writing
       const permissionResult = await this.fixFilePermissions(filePath);
-      if (typeof permissionResult !== 'boolean') {
+      if (!('success' in permissionResult)) {
         console.warn("Failed to set permissions after writing:", permissionResult.message);
       }
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("File write error:", error);
       return {
@@ -144,4 +144,3 @@ export const FilePermissionService = {
     }
   }
 };
-

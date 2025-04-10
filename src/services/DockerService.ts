@@ -4,7 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 // Configuration for Docker API access
 const DOCKER_API_BASE = '/api/docker'; // This would need to be proxied to Docker socket in production
 
-interface ContainerInfo {
+export interface ContainerInfo {
   id: string;
   name: string;
   status: string;
@@ -54,7 +54,7 @@ export const DockerService = {
   /**
    * Restart a specific container by ID or name
    */
-  async restartContainer(containerIdOrName: string): Promise<boolean | DockerError> {
+  async restartContainer(containerIdOrName: string): Promise<{ success: boolean } | DockerError> {
     try {
       const response = await fetch(`${DOCKER_API_BASE}/containers/${containerIdOrName}/restart`, {
         method: 'POST'
@@ -68,7 +68,7 @@ export const DockerService = {
         };
       }
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error("Docker restart error:", error);
       return {
@@ -103,4 +103,3 @@ export const DockerService = {
     }
   }
 };
-

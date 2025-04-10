@@ -81,7 +81,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast({
           title: "Container Not Running",
           description: `The container "${nginxContainerName}" exists but is not running.`,
-          variant: "warning",
+          variant: "warning", // Now included in AlertVariants
         });
       }
     };
@@ -97,7 +97,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const restartContainer = async (): Promise<boolean> => {
     const result = await DockerService.restartContainer(nginxContainerName);
     
-    if (typeof result === 'boolean' && result) {
+    if ('success' in result && result.success) {
       toast({
         title: "Container Restarted",
         description: `The ${nginxContainerName} container was successfully restarted.`,
@@ -117,7 +117,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const saveConfig = async (content: string): Promise<boolean> => {
     const result = await FilePermissionService.writeFile(nginxConfigPath, content);
     
-    if (typeof result === 'boolean' && result) {
+    if ('success' in result && result.success) {
       toast({
         title: "Configuration Saved",
         description: `NGINX configuration has been written to ${nginxConfigPath}`,
@@ -180,7 +180,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const fixFilePermissions = async (): Promise<boolean> => {
     const result = await FilePermissionService.fixFilePermissions(nginxConfigPath);
     
-    if (typeof result === 'boolean' && result) {
+    if ('success' in result && result.success) {
       toast({
         title: "Permissions Fixed",
         description: `File permissions for ${nginxConfigPath} have been corrected.`,
@@ -217,4 +217,3 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     </ConfigContext.Provider>
   );
 };
-
