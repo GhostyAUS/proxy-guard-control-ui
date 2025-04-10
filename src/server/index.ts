@@ -1,3 +1,4 @@
+
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { exec } from 'child_process';
@@ -14,6 +15,11 @@ app.use(express.json());
 
 // Docker client setup
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+
+// Define API routes first
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 
 // API routes for Docker operations
 app.get('/api/docker/containers/json', async (req, res) => {
@@ -156,16 +162,33 @@ app.get('/api/files/read', async (req, res) => {
   }
 });
 
-// Serve static files in production
+// Check if running in production mode
 if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../../dist');
+  console.log('Running in production mode, serving static files');
+  
+  // Calculate the correct path to the static files
+  const distPath = path.resolve(__dirname, '../../dist');
+  
+  // Log the static path for debugging
+  console.log(`Serving static files from: ${distPath}`);
+  
+  // Serve static files
   app.use(express.static(distPath));
+  
+  // All other GET requests not handled before will return the React app
   app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+    if (req.path.startsWith('/api')) {
+      res.status(404).json({ error: 'API endpoint not found' });
+    } else {
+      console.log(`Serving index.html for path: ${req.path}`);
+      res.sendFile(path.resolve(distPath, 'index.html'));
+    }
   });
+} else {
+  console.log('Running in development mode');
 }
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });

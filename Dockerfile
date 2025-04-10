@@ -39,6 +39,9 @@ RUN echo '{"type":"commonjs"}' > dist/server/package.json
 # Install production dependencies for the server
 RUN npm ci --production
 
+# Set production environment
+ENV NODE_ENV=production
+
 # Expose the port
 EXPOSE 3000
 
