@@ -3,14 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Save, RefreshCw } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Save, RefreshCw, AlertTriangle, Check, FileWarning, Settings } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
+import { useConfig } from "@/context/ConfigContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface ConfigurationEditorProps {
   onSave: () => void;
 }
 
-// Sample nginx.conf content based on the provided configuration
+// Sample nginx.conf content - this will be replaced with actual content from the file
 const initialConfig = `worker_processes auto;
 daemon off;
 
@@ -23,144 +27,40 @@ http {
                     '$status $body_bytes_sent "$http_referer" '
                     '"$http_user_agent" "$http_x_forwarded_for"';
    
-    log_format denied '$remote_addr - [$time_local] "$request" '
-                      '$status "$http_user_agent" "$http_referer" '
-                      'Host: "$host" URI: "$request_uri" '
-                      'Client: "$remote_addr" '
-                      'Reason: "$deny_reason"';
-	   
-    access_log /var/log/nginx/access.log main;
-    error_log /var/log/nginx/error.log info;
-    access_log /var/log/nginx/denied.log denied if=$deny_log;
-
-    # WHITELIST GROUPS
-    # Each group contains allowed IPs and their corresponding allowed URLs
-    
-    # Group: Default Group
-    geo $whitelist_default_group {
-        default 0;
-        # Allow Individual IPs below:
-        172.24.20.12/32 1;  # MOTPERWU01 wsus
-        172.24.20.16/32 1;  # motperap04 rhel repo
-        # Allow Subnets below:
-        172.24.20.0/23 1;
-    }
-    
-    # URL map for Default Group
-    map $host $default_group_allowed_url {
-        default 0;  # Block by default - deny unless explicitly allowed
-        # Allow specific domains below:
-        "~^.*\\.microsoft\\.com$" 1;  # motperwu01
-        "~^.*\\.windowsupdate\\.com$" 1;  # motperwu01
-        "subscription.rhn.redhat.com" 1;  # motperap04
-    }
-
-    # Variables for logging denied requests
-    map $status $deny_log {
-        ~^4 1;  # Log all 4xx responses (including 403 denied requests)
-        default 0;
-    }
-    
-    # Map to set denial reason based on group access
-    map "$whitelist_default_group:$default_group_allowed_url" $deny_reason_default_group {
-        "0:0" "IP not in group or URL not allowed for group";
-        "0:1" "IP not in group";
-        "1:0" "URL not in allowed list for group";
-        default "";
-    }
-
-    server {
-        listen 8080;
-        # External DNS server/s
-        resolver 8.8.8.8 1.1.1.1 ipv6=off;
-
-        # Use the geo variable for access control
-        if ($whitelist_default_group = 0) {
-            set $deny_reason "IP not in any whitelist group: $remote_addr";
-            return 403 "Access denied: Your IP is not in any whitelist group.";
-        }
-
-        # Block disallowed URLs for default group
-        if ($whitelist_default_group = 1) {
-            if ($default_group_allowed_url = 0) {
-                set $deny_reason "URL not allowed for your group: $host";
-                return 403 "Access denied: This URL is not allowed for your whitelist group.";
-            }
-        }
-
-        # HTTPS CONNECT method handling
-        proxy_connect;
-        proxy_connect_allow all;  # Allow all ports for HTTPS connections
-        proxy_connect_connect_timeout 10s;
-        proxy_connect_read_timeout 60s;
-        proxy_connect_send_timeout 60s;
-
-        # Security headers
-        proxy_hide_header Upgrade;
-        proxy_hide_header X-Powered-By;
-        add_header Content-Security-Policy "upgrade-insecure-requests";
-        add_header X-Frame-Options "SAMEORIGIN";
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header Cache-Control "no-transform" always;
-        add_header Referrer-Policy no-referrer always;
-        add_header X-Robots-Tag none;
-
-        # HTTP forwarding
-        location / {
-            # Check whitelist again at location level
-            if ($whitelist_default_group = 0) {
-                set $deny_reason "IP not in any whitelist group at location level: $remote_addr";
-                return 403 "Access denied: Your IP is not in any whitelist group.";
-            }
-
-            # Check URL filtering again at location level for default group
-            if ($whitelist_default_group = 1) {
-                if ($default_group_allowed_url = 0) {
-                    set $deny_reason "URL not allowed for your group at location level: $host";
-                    return 403 "Access denied: This URL is not allowed for your whitelist group.";
-                }
-            }
-
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header Connection "";  # Enable keepalives
-            proxy_pass $scheme://$host$request_uri;  # Include $request_uri
-
-            # Additional useful headers
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-
-            # Timeouts for better reliability
-            proxy_connect_timeout 10s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-    }
+    # Add configuration here
 }`;
 
 const ConfigurationEditor: React.FC<ConfigurationEditorProps> = ({ onSave }) => {
   const [config, setConfig] = useState(initialConfig);
   const [isValid, setIsValid] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const {
+    nginxConfigPath,
+    setNginxConfigPath,
+    nginxContainerName,
+    setNginxContainerName,
+    isContainerRunning,
+    restartContainer,
+    saveConfig,
+    loadConfig,
+    checkFilePermissions,
+    fixFilePermissions,
+    permissionStatus
+  } = useConfig();
 
-  const handleSaveConfig = () => {
-    // In a real implementation, this would save to the filesystem
-    if (!isValid) {
-      toast({
-        title: "Invalid configuration",
-        description: "Please fix the NGINX configuration errors before saving.",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Load config on component mount
+  useEffect(() => {
+    const fetchConfig = async () => {
+      setIsLoading(true);
+      const configContent = await loadConfig();
+      if (configContent) {
+        setConfig(configContent);
+      }
+      setIsLoading(false);
+    };
     
-    onSave();
-    toast({
-      title: "Configuration saved",
-      description: "NGINX configuration has been saved to nginx.conf",
-    });
-  };
+    fetchConfig();
+  }, [nginxConfigPath]);
 
   const validateConfig = (configText: string) => {
     // This is a placeholder for NGINX config validation
@@ -183,8 +83,38 @@ const ConfigurationEditor: React.FC<ConfigurationEditorProps> = ({ onSave }) => 
     setIsValid(validateConfig(newConfig));
   };
 
+  const handleSaveConfig = async () => {
+    if (!isValid) {
+      toast({
+        title: "Invalid configuration",
+        description: "Please fix the NGINX configuration errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    const success = await saveConfig(config);
+    setIsLoading(false);
+    
+    if (success) {
+      onSave();
+    }
+  };
+
+  const handleContainerRestart = async () => {
+    setIsLoading(true);
+    await restartContainer();
+    setIsLoading(false);
+  };
+
+  const handleFixPermissions = async () => {
+    setIsLoading(true);
+    await fixFilePermissions();
+    setIsLoading(false);
+  };
+
   const generateConfig = () => {
-    // In a real implementation, this would generate config from the UI state
     toast({
       title: "Config generation",
       description: "Generating NGINX configuration from current whitelist groups.",
@@ -196,21 +126,114 @@ const ConfigurationEditor: React.FC<ConfigurationEditorProps> = ({ onSave }) => 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">NGINX Configuration</h2>
         <div className="space-x-2">
-          <Button onClick={generateConfig} variant="outline">
+          <Button onClick={generateConfig} variant="outline" disabled={isLoading}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Generate from Groups
           </Button>
           <Button 
             onClick={handleSaveConfig} 
             className="bg-green-600 hover:bg-green-700"
-            disabled={!isValid}
+            disabled={!isValid || isLoading}
           >
             <Save className="w-4 h-4 mr-2" />
             Save Configuration
           </Button>
         </div>
       </div>
+
+      {/* Configuration Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Settings className="w-5 h-5 mr-2" />
+            Configuration Settings
+          </CardTitle>
+          <CardDescription>
+            Set the NGINX configuration file path and container name
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="configPath">NGINX Config Path</Label>
+              <Input 
+                id="configPath"
+                value={nginxConfigPath}
+                onChange={(e) => setNginxConfigPath(e.target.value)}
+                placeholder="/etc/nginx/nginx.conf"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="containerName">Container Name</Label>
+              <Input 
+                id="containerName"
+                value={nginxContainerName}
+                onChange={(e) => setNginxContainerName(e.target.value)}
+                placeholder="nginx-forward-proxy"
+              />
+            </div>
+          </div>
+          
+          {/* File permission status */}
+          {permissionStatus.checked && (
+            <Alert variant={permissionStatus.isCorrect ? "default" : "destructive"}>
+              <div className="flex items-center">
+                {permissionStatus.isCorrect ? 
+                  <Check className="h-4 w-4 mr-2 text-green-500" /> : 
+                  <FileWarning className="h-4 w-4 mr-2" />
+                }
+                <AlertTitle>
+                  {permissionStatus.isCorrect ? "File Permissions OK" : "Permission Issue Detected"}
+                </AlertTitle>
+              </div>
+              <AlertDescription>
+                {permissionStatus.details}
+                {!permissionStatus.isCorrect && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleFixPermissions}
+                    className="mt-2"
+                  >
+                    Fix Permissions
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Container status */}
+          <Alert variant={isContainerRunning ? "default" : "warning"}>
+            <div className="flex items-center">
+              {isContainerRunning ? 
+                <Check className="h-4 w-4 mr-2 text-green-500" /> : 
+                <AlertTriangle className="h-4 w-4 mr-2" />
+              }
+              <AlertTitle>
+                {isContainerRunning ? "Container Running" : "Container Status Issue"}
+              </AlertTitle>
+            </div>
+            <AlertDescription>
+              {isContainerRunning ? 
+                `The ${nginxContainerName} container is running.` : 
+                `The ${nginxContainerName} container is not running.`
+              }
+              {!isContainerRunning && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleContainerRestart}
+                  className="mt-2"
+                >
+                  Start Container
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
       
+      {/* Editor */}
       <Card>
         <CardHeader>
           <CardTitle>Edit nginx.conf</CardTitle>
@@ -225,10 +248,16 @@ const ConfigurationEditor: React.FC<ConfigurationEditorProps> = ({ onSave }) => 
               value={config}
               onChange={handleConfigChange}
               spellCheck={false}
+              disabled={isLoading}
             />
             {!isValid && (
               <div className="absolute bottom-2 right-2 bg-red-500 text-white px-2 py-1 text-xs rounded">
                 Invalid configuration
+              </div>
+            )}
+            {isLoading && (
+              <div className="absolute inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
               </div>
             )}
           </div>
@@ -240,35 +269,39 @@ const ConfigurationEditor: React.FC<ConfigurationEditorProps> = ({ onSave }) => 
           <Button 
             onClick={handleSaveConfig} 
             variant="default"
-            disabled={!isValid}
+            disabled={!isValid || isLoading}
           >
             Save Changes
           </Button>
         </CardFooter>
       </Card>
       
+      {/* Container Restart Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Container Restart Instructions</CardTitle>
+          <CardTitle>Container Management</CardTitle>
           <CardDescription>
-            After saving the NGINX configuration, you need to restart the container for changes to take effect.
+            After saving the NGINX configuration, restart the container for changes to take effect.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="bg-slate-100 p-4 rounded-md">
-              <p className="font-mono text-sm mb-2">Option 1: Using Docker CLI</p>
-              <code className="bg-slate-800 text-slate-100 p-2 rounded block overflow-x-auto">
-                docker restart nginx-forward-proxy
-              </code>
-            </div>
-            
-            <div className="bg-slate-100 p-4 rounded-md">
-              <p className="font-mono text-sm mb-2">Option 2: Using Docker Compose</p>
-              <code className="bg-slate-800 text-slate-100 p-2 rounded block overflow-x-auto">
-                docker-compose restart nginx-proxy
-              </code>
-            </div>
+        <CardContent className="space-y-4">
+          <Alert className="bg-yellow-50 border-yellow-300">
+            <AlertTriangle className="h-4 w-4 text-yellow-800" />
+            <AlertTitle>Configuration changes require a container restart</AlertTitle>
+            <AlertDescription>
+              After saving your changes to the NGINX configuration file, you need to restart the container for the changes to take effect.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex justify-center">
+            <Button 
+              onClick={handleContainerRestart}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              disabled={isLoading}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Restart {nginxContainerName} Container
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -277,3 +310,4 @@ const ConfigurationEditor: React.FC<ConfigurationEditorProps> = ({ onSave }) => 
 };
 
 export default ConfigurationEditor;
+
