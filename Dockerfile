@@ -21,8 +21,17 @@ RUN npm install dockerode @types/dockerode
 # Copy source files
 COPY . .
 
-# Build the application
+# Create a dedicated build script for the server
+RUN echo '#!/bin/sh\nmkdir -p dist\ncp -r src/server dist/' > build-server.sh && chmod +x build-server.sh
+
+# Build the React application
 RUN npm run build
+
+# Build the server code
+RUN ./build-server.sh
+
+# Verify the server file exists
+RUN ls -la dist/server
 
 # Install production dependencies for the server
 RUN npm ci --production
@@ -31,4 +40,4 @@ RUN npm ci --production
 EXPOSE 3000
 
 # Start the server
-CMD ["node", "dist/server"]
+CMD ["node", "dist/server/index.js"]
