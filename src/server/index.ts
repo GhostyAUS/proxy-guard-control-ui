@@ -1,4 +1,3 @@
-
 import express from 'express';
 import { exec } from 'child_process';
 import * as fs from 'fs';
@@ -188,7 +187,7 @@ if (process.env.NODE_ENV === 'production') {
     }
   }));
   
-  // Explicit handling for API routes to prevent React Router from handling them
+  // Explicit handling for API routes
   app.all('/api/*', (req, res) => {
     res.status(404).json({ 
       error: 'API endpoint not found',
@@ -196,10 +195,9 @@ if (process.env.NODE_ENV === 'production') {
     });
   });
   
-  // All other GET requests not handled before will return the React app
-  // but be careful not to handle URLs with file extensions (static assets)
+  // For all other routes, serve the index.html to let HashRouter handle the routing client-side
   app.get('*', (req, res, next) => {
-    // Skip handling for paths that appear to be static files
+    // Skip handling for paths with file extensions (static assets)
     if (req.path.includes('.')) {
       return next();
     }
