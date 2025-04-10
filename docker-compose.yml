@@ -4,8 +4,7 @@ services:
   nginx-forward-proxy:
     image: dominikbechstein/nginx-forward-proxy:latest
     container_name: nginx-forward-proxy
-    ports:
-      - "8080:8080"
+    network_mode: host
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/htpasswd:/etc/nginx/htpasswd
@@ -17,8 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: proxy-guard-ui
-    ports:
-      - "3000:3000"
+    network_mode: host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./nginx:/etc/nginx
