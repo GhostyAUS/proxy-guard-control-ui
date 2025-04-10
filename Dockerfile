@@ -24,12 +24,11 @@ COPY . .
 # Build the React application first
 RUN npm run build
 
-# Create server directory in dist and copy server files directly
-# Make sure this happens AFTER the build
-RUN mkdir -p dist/server && cp -r src/server/* dist/server/
+# Ensure server files are compiled to JavaScript
+RUN npx tsc --outDir dist/server src/server/index.ts
 
 # Verify the server file exists
-RUN ls -la dist/server
+RUN ls -la dist/server && cat dist/server/index.js
 
 # Install production dependencies for the server
 RUN npm ci --production
