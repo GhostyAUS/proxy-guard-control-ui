@@ -33,6 +33,9 @@ RUN npx tsc -p server-tsconfig.json
 # Verify the server file exists
 RUN ls -la dist/server && cat dist/server/index.js
 
+# Create a package.json specifically for the server to ensure it runs as CommonJS
+RUN echo '{"type":"commonjs"}' > dist/server/package.json
+
 # Install production dependencies for the server
 RUN npm ci --production
 
