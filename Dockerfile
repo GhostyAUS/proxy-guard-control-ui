@@ -10,10 +10,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with specific version of lucide-react
+# Install dependencies with specific versions for problematic packages
 RUN npm ci
 # Force reinstall lucide-react with specific version
 RUN npm uninstall lucide-react && npm install lucide-react@0.461.0
+# Force reinstall path-to-regexp with a specific version to fix the routing issue
+RUN npm uninstall path-to-regexp && npm install path-to-regexp@6.2.1
 
 # Add dockerode package
 RUN npm install dockerode @types/dockerode

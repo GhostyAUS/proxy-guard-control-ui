@@ -1,6 +1,5 @@
 
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -172,23 +171,47 @@ if (process.env.NODE_ENV === 'production') {
   // Log the static path for debugging
   console.log(`Serving static files from: ${distPath}`);
   
-  // Serve static files
-  app.use(express.static(distPath));
+  // Make sure the dist directory exists
+  if (!fs.existsSync(distPath)) {
+    console.error(`ERROR: Static files directory does not exist: ${distPath}`);
+    process.exit(1);
+  }
+  
+  // Serve static files with proper MIME types
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      }
+    }
+  }));
+  
+  // Explicit handling for API routes to prevent React Router from handling them
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({ 
+      error: 'API endpoint not found',
+      endpoint: req.path
+    });
+  });
   
   // All other GET requests not handled before will return the React app
-  app.get('*', (req, res) => {
-    if (req.path.startsWith('/api')) {
-      res.status(404).json({ error: 'API endpoint not found' });
-    } else {
-      console.log(`Serving index.html for path: ${req.path}`);
-      res.sendFile(path.resolve(distPath, 'index.html'));
+  // but be careful not to handle URLs with file extensions (static assets)
+  app.get('*', (req, res, next) => {
+    // Skip handling for paths that appear to be static files
+    if (req.path.includes('.')) {
+      return next();
     }
+    
+    console.log(`Serving index.html for path: ${req.path}`);
+    res.sendFile(path.resolve(distPath, 'index.html'));
   });
 } else {
   console.log('Running in development mode');
 }
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });

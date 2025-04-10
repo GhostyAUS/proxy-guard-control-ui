@@ -28,7 +28,7 @@ const App = () => {
             <Sonner />
             <Routes>
               <Route path="/" element={<Index />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              {/* Using exact paths to avoid route matching issues */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>
@@ -39,4 +39,3 @@ const App = () => {
 };
 
 export default App;
-
