@@ -13,6 +13,9 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
+# Add dockerode package
+RUN npm install dockerode @types/dockerode
+
 # Copy source files
 COPY . .
 
