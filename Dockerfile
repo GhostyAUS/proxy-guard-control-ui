@@ -10,8 +10,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies with specific version of lucide-react
 RUN npm ci
+# Force reinstall lucide-react with specific version
+RUN npm uninstall lucide-react && npm install lucide-react@0.461.0
 
 # Add dockerode package
 RUN npm install dockerode @types/dockerode
