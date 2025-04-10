@@ -21,11 +21,12 @@ RUN npm install dockerode @types/dockerode
 # Copy source files
 COPY . .
 
-# Create server directory in dist and copy server files directly
-RUN mkdir -p dist/server && cp -r src/server/* dist/server/
-
-# Build the React application
+# Build the React application first
 RUN npm run build
+
+# Create server directory in dist and copy server files directly
+# Make sure this happens AFTER the build
+RUN mkdir -p dist/server && cp -r src/server/* dist/server/
 
 # Verify the server file exists
 RUN ls -la dist/server
